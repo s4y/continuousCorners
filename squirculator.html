@@ -103,6 +103,7 @@ const updateSquircle = ({
   midpointLocation,
   midpointVelocity,
 }) => {
+  midpointLocation *= endLocation / 2;
   const side = [
     [-1, 0-endLocation-endVelocity],
     [-1, -1+endLocation+endVelocity],
