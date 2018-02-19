@@ -90,10 +90,6 @@ class Settings {
 const pathElA = document.getElementById('squircle');
 const pathElB = pathElA.cloneNode(true);
 
-const joinPoints = points => {
-  return points.map(coord => coord.join(' ')).join(' ');
-}
-
 const rotate = ([x, y], θ) => {
   return [
     x * Math.cos(θ) + y * Math.sin(θ),
@@ -124,15 +120,24 @@ const updateSquircle = ({
     [-1 + endLocation, -1],
   ];
 
+  const rotatePoints = (points, rotation) =>
+    points.map(p => rotate(p, Math.PI * rotation))
+  ;
+
+  const joinPoints = points =>
+    points.map(coord => coord.join(' ')).join(' ')
+  ;
+
+  const buildCorner = rotation => `
+    C ${joinPoints(rotatePoints(side, rotation))},
+    S ${joinPoints(rotatePoints(cornerA, rotation))},
+    S ${joinPoints(rotatePoints(cornerB, rotation))}
+  `;
+
   pathElA.setAttribute('d', `
-    M 0 ${4-endLocation},
-    C ${joinPoints(side)},
-    S ${joinPoints(cornerA)},
-    S ${joinPoints(cornerB)},
-    C ${joinPoints(side.map(p => rotate(p, Math.PI * -0.5)))},
-    S ${joinPoints(cornerA.map(p => rotate(p, Math.PI * -0.5)))},
-    S ${joinPoints(cornerB.map(p => rotate(p, Math.PI * -0.5)))},
-    Z`);
+    M -1 ${4-endLocation},
+    ${[0, -0.5, -1, -1.5].map(r => buildCorner(r)).join(',')},
+  Z`);
   // pathElB.setAttribute('d', `
   //   M 0 1,
   //   C 0 ${params.endVelocity}, ${params.endVelocity} 0, 1 0,
