@@ -106,11 +106,14 @@ const rotate = ([x, y], θ) => {
 
 const updateSquircle = ({
   endLocation,
-  endVelocity,
   midpointLocation,
-  midpointVelocity,
 }) => {
   midpointLocation *= endLocation / 2;
+  const midpointVelocity = Math.sqrt(
+    Math.pow(midpointLocation, 2) +
+    Math.pow(endLocation + midpointLocation, 2)
+  ) / 4;
+  const endVelocity = midpointVelocity;
   const side = [
     [-1, 0-endLocation-endVelocity],
     [-1, -1+endLocation+endVelocity],
