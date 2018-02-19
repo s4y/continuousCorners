@@ -12,7 +12,7 @@ li {
 
 </style>
 <ul id=settings></ul>
-<p><svg width=400 height=400 viewBox="0 0 4 4">
+<p><svg width=400 height=400 viewBox="-1 -1 2 2">
   <!--<rect fill=red rx=1 ry=1 x=0 y=0 width=4 height=4>
     <animate attributeType="CSS" attributeName="opacity" values="1;0;1" dur="2s" repeatCount="indefinite" />
   </rect>-->
@@ -90,31 +90,48 @@ class Settings {
 const pathElA = document.getElementById('squircle');
 const pathElB = pathElA.cloneNode(true);
 
+const joinPoints = points => {
+  return points.map(coord => coord.join(' ')).join(' ');
+}
+
+const rotate = ([x, y], θ) => {
+  return [
+    x * Math.cos(θ) + y * Math.sin(θ),
+    -x * Math.sin(θ) + y * Math.cos(θ),
+  ];
+};
+
 const updateSquircle = ({
   endLocation,
   endVelocity,
   midpointLocation,
   midpointVelocity,
 }) => {
+  const side = [
+    [-1, 0-endLocation-endVelocity],
+    [-1, -1+endLocation+endVelocity],
+    [-1, -1+endLocation],
+  ];
+  const cornerA = [
+    [
+      -1 + midpointLocation + Math.cos(Math.PI * 1.25) * midpointVelocity,
+      -1 + midpointLocation + Math.sin(Math.PI * 1.25) * -midpointVelocity
+    ],
+    [-1 + midpointLocation, -1 + midpointLocation],
+  ];
+  const cornerB = [
+    [-1 + endLocation - endVelocity, -1],
+    [-1 + endLocation, -1],
+  ];
+
   pathElA.setAttribute('d', `
     M 0 ${4-endLocation},
-    C 0 ${4-endLocation-endVelocity}
-      0 ${endLocation+endVelocity}
-      0 ${endLocation},
-    S 
-        ${midpointLocation + Math.cos(Math.PI * 1.25) * midpointVelocity}
-        ${midpointLocation + Math.sin(Math.PI * 1.25) * -midpointVelocity}
-      ${midpointLocation} ${midpointLocation},
-    S ${endLocation-endVelocity} 0
-      ${endLocation} 0,
-    S ${4-endLocation-endVelocity} 0
-      ${4-endLocation} 0,
-    S 
-        ${4 - midpointLocation + Math.cos(Math.PI * 0.75) * midpointVelocity}
-        ${midpointLocation + Math.sin(Math.PI * 0.75) * -midpointVelocity}
-      ${4-midpointLocation} ${midpointLocation},
-    S 4 ${4-endLocation-endVelocity}
-      4 ${4-endLocation},
+    C ${joinPoints(side)},
+    S ${joinPoints(cornerA)},
+    S ${joinPoints(cornerB)},
+    C ${joinPoints(side.map(p => rotate(p, Math.PI * -0.5)))},
+    S ${joinPoints(cornerA.map(p => rotate(p, Math.PI * -0.5)))},
+    S ${joinPoints(cornerB.map(p => rotate(p, Math.PI * -0.5)))},
     Z`);
   // pathElB.setAttribute('d', `
   //   M 0 1,
