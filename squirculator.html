@@ -39,7 +39,14 @@ class Settings {
   appendElement(name, el) {
     const liEl = document.createElement('li');
     const labelEl = document.createElement('label');
-    labelEl.appendChild(document.createTextNode(name));
+    const textNode = document.createTextNode('');
+    const updateLabel = () => {
+      textNode.nodeValue = `${name} (${el.value})`;
+    };
+    updateLabel();
+    el.addEventListener('input', updateLabel);
+
+    labelEl.appendChild(textNode);
     labelEl.appendChild(document.createElement('br'));
     labelEl.appendChild(el);
     liEl.appendChild(labelEl);
@@ -72,10 +79,10 @@ class Settings {
     el.max = max;
     el.step = step;
     el.value = initial;
-    el.oninput = e => {
+    el.addEventListener('input', e => {
       this.save();
       this.onchange();
-    };
+    });
     this.inputs[name] = el;
     this.appendElement(name, el);
 
