@@ -1,17 +1,25 @@
 <!DOCTYPE html>
-<p><label>Radius<br><input id=radiusInput type=range min=0 max=1 value=0.5 step=0.001></label></p>
-<p><label>Smoothness<br><input id=smoothnessInput type=range min=0.7 max=4 value=1 step=0.001></label></p>
-<p><svg width=200 height=200 viewBox="-1 -1 2 2">
-  <rect id=roundrect fill=red rx=0.5 ry=0.5 x=-1 y=-1 width=2 height=2></rect>
-  <path id=squircle x=1 fill="rgba(255, 0, 0, 1)" style="
-    mix-blend-mode: difference;
-  " />
-</svg></p>
+<style>
 
+#svgEl.continuous > #roundrect {
+  display: none;
+}
+
+#svgEl:not(.continuous) > #continuousrect {
+  display: none;
+}
+
+</style>
+<p><label>Continuous: <input id=continuousInput type=checkbox checked></label></p>
+<p><label>Radius:<br><input id=radiusInput type=range min=0 max=1 value=0.5 step=0.001></label></p>
+<p><svg id=svgEl width=200 height=200 viewBox="-1 -1 2 2">
+  <rect id=roundrect rx=0.5 ry=0.5 x=-1 y=-1 width=2 height=2></rect>
+  <path id=continuousrect x=1 />
+</svg></p>
 <script>
 
 const roundrectEl = document.getElementById('roundrect');
-const pathEl = document.getElementById('squircle');
+const pathEl = document.getElementById('continuousrect');
 
 const rotate = ([x, y], θ) => {
   return [
@@ -20,22 +28,19 @@ const rotate = ([x, y], θ) => {
   ];
 };
 
-const updateSquircle = () => {
+const updateShape = () => {
   const radius = radiusInput.valueAsNumber;
-  const smoothness = smoothnessInput.valueAsNumber;
   const midpointInset = radius - Math.sin(Math.PI * 0.25) * radius;
-  const endInset = Math.min(1, midpointInset * 4 * smoothness);
+  const endInset = Math.min(1, midpointInset * 4);
   const velocity = Math.sqrt(
     Math.pow(midpointInset, 2) +
     Math.pow(endInset + midpointInset, 2)
-  ) / 4 / smoothness;
-  console.log(endInset);
+  ) / 4;
   const side = [
-    [-1, 0-endInset-velocity],
-    [-1, -1+endInset+velocity],
     [-1, -1+endInset],
   ];
   const cornerA = [
+    [-1, -1+endInset-velocity],
     [
       -1 + midpointInset + Math.cos(Math.PI * 1.25) * velocity,
       -1 + midpointInset + Math.sin(Math.PI * 1.25) * -velocity
@@ -56,8 +61,8 @@ const updateSquircle = () => {
   ;
 
   const buildCorner = rotation => `
-    C ${joinPoints(rotatePoints(side, rotation))},
-    S ${joinPoints(rotatePoints(cornerA, rotation))},
+    L ${joinPoints(rotatePoints(side, rotation))},
+    C ${joinPoints(rotatePoints(cornerA, rotation))},
     S ${joinPoints(rotatePoints(cornerB, rotation))}
   `;
 
@@ -69,8 +74,14 @@ const updateSquircle = () => {
   Z`);
 }
 
-radiusInput.addEventListener('input', updateSquircle);
-smoothnessInput.addEventListener('input', updateSquircle);
-updateSquircle();
+radiusInput.addEventListener('input', updateShape);
+updateShape();
+
+const updateIsContinuous = () => {
+  svgEl.classList[continuousInput.checked ? 'add' : 'remove']('continuous');
+};
+
+continuousInput.addEventListener('input', updateIsContinuous);
+updateIsContinuous();
 
 </script>
