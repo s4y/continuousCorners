@@ -12,9 +12,9 @@ li {
 
 </style>
 <ul id=settings></ul>
-<p><svg width=400 height=400 viewBox="-1 -1 3 3">
-  <!--<rect fill=red rx=.3 ry=.3 x=0 y=0 width=1 height=1>
-  <animate attributeType="CSS" attributeName="opacity" values="1;0;1" dur="2s" repeatCount="indefinite" />
+<p><svg width=400 height=400 viewBox="0 0 4 4">
+  <!--<rect fill=red rx=1 ry=1 x=0 y=0 width=4 height=4>
+    <animate attributeType="CSS" attributeName="opacity" values="1;0;1" dur="2s" repeatCount="indefinite" />
   </rect>-->
   <path id=squircle x=1 fill="rgba(0, 0, 0, 0.7)"/>
 </svg></p>
@@ -91,21 +91,32 @@ const pathElA = document.getElementById('squircle');
 const pathElB = pathElA.cloneNode(true);
 
 const updateSquircle = ({
+  endLocation,
   endVelocity,
   midpointLocation,
   midpointVelocity,
 }) => {
   pathElA.setAttribute('d', `
-    M 0 1,
-    C 0 ${endVelocity}
-      ${midpointLocation + Math.cos(Math.PI * 1.25) * midpointVelocity} ${midpointLocation + Math.sin(Math.PI * 1.25) * -midpointVelocity},
+    M 0 ${4-endLocation},
+    C 0 ${4-endLocation-endVelocity}
+      0 ${endLocation+endVelocity}
+      0 ${endLocation},
+    S ${
+        midpointLocation + Math.cos(Math.PI * 1.25) * midpointVelocity
+      } ${
+        midpointLocation + Math.sin(Math.PI * 1.25) * -midpointVelocity
+      },
       ${midpointLocation} ${midpointLocation},
-    C ${midpointLocation + Math.cos(Math.PI * 0.25) * midpointVelocity} ${midpointLocation + Math.sin(Math.PI * 0.25) * -midpointVelocity},
-      ${endVelocity} 0
-      1 0,
-    L 1 0,
-    L 1 1,
-    L 0 1,
+    S ${endLocation-endVelocity} 0
+      ${endLocation} 0,
+    S ${4-endLocation-endVelocity} 0
+      ${4-endLocation} 0,
+    S ${
+        4 - midpointLocation + Math.cos(Math.PI * 1.75) * midpointVelocity
+      } ,
+      4 ${endLocation},
+    S 4 ${4-endLocation-endVelocity}
+      4 ${4-endLocation},
     Z`);
   // pathElB.setAttribute('d', `
   //   M 0 1,
@@ -122,8 +133,9 @@ const settings = new Settings(document.getElementById('settings'), () => {
   updateSquircle(settings);
 });
 
+settings.addSlider('endLocation', 0, 1, 0.01, 0.3);
 settings.addSlider('endVelocity', 0, 1, 0.01, 0.25);
-settings.addSlider('midpointLocation', 0, 0.5, 0.01, 0.2);
+settings.addSlider('midpointLocation', 0, 1, 0.01, 0.2);
 settings.addSlider('midpointVelocity', 0, 1, 0.01, 0.25);
 settings.load();
 
