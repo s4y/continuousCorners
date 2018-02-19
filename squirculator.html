@@ -1,101 +1,17 @@
 <!DOCTYPE html>
-<style>
-
-#settings {
-  list-style: none;
-  padding: 0 0.5em;
-}
-
-li {
-  margin: 1em 0;
-}
-
-</style>
-<ul id=settings></ul>
-<p><svg width=400 height=400 viewBox="-1 -1 2 2">
-  <!--<rect fill=red rx=1 ry=1 x=0 y=0 width=4 height=4>
-    <animate attributeType="CSS" attributeName="opacity" values="1;0;1" dur="2s" repeatCount="indefinite" />
-  </rect>-->
-  <path id=squircle x=1 fill="rgba(0, 0, 0, 0.7)"/>
+<p><label>Radius<br><input id=radiusInput type=range min=0 max=1 value=0.5 step=0.001></label></p>
+<p><label>Smoothness<br><input id=smoothnessInput type=range min=0.7 max=4 value=1 step=0.001></label></p>
+<p><svg width=200 height=200 viewBox="-1 -1 2 2">
+  <rect id=roundrect fill=red rx=0.5 ry=0.5 x=-1 y=-1 width=2 height=2></rect>
+  <path id=squircle x=1 fill="rgba(255, 0, 0, 1)" style="
+    mix-blend-mode: difference;
+  " />
 </svg></p>
 
 <script>
 
-class Settings {
-  constructor(el, onchange) {
-    this.el = el;
-    this.onchange = onchange;
-    this.inputs = Object.create(null);
-  }
-
-  toJSON() {
-    const ret = {};
-    for (const k in this.inputs) {
-      ret[k] = this[k];
-    }
-    return ret;
-  }
-
-  appendElement(name, el) {
-    const liEl = document.createElement('li');
-    const labelEl = document.createElement('label');
-    const textNode = document.createTextNode('');
-    const updateLabel = () => {
-      textNode.nodeValue = `${name} (${el.value})`;
-    };
-    updateLabel();
-    el.addEventListener('input', updateLabel);
-
-    labelEl.appendChild(textNode);
-    labelEl.appendChild(document.createElement('br'));
-    labelEl.appendChild(el);
-    liEl.appendChild(labelEl);
-    this.el.appendChild(liEl);
-  }
-
-  load() {
-    let saved = JSON.parse(sessionStorage.settings);
-    for (const k in saved) {
-      this[k] = saved[k];
-    }
-  }
-
-  save() {
-    sessionStorage.settings = JSON.stringify(this);
-  }
-
-  wantSave() {
-    if (this.saveTimeout)
-      return;
-    this.saveTimeout = createTimeout(() => {
-      this.save();
-    }, 100);
-  }
-
-  addSlider(name, min, max, step, initial) {
-    const el = document.createElement('input');
-    el.type = 'range';
-    el.min = min;
-    el.max = max;
-    el.step = step;
-    el.value = initial;
-    el.addEventListener('input', e => {
-      this.save();
-      this.onchange();
-    });
-    this.inputs[name] = el;
-    this.appendElement(name, el);
-
-    Object.defineProperty(this, name, {
-      get: () => el.valueAsNumber,
-      set: val => { el.valueAsNumber = val; },
-    });
-    return el;
-  }
-};
-
-const pathElA = document.getElementById('squircle');
-const pathElB = pathElA.cloneNode(true);
+const roundrectEl = document.getElementById('roundrect');
+const pathEl = document.getElementById('squircle');
 
 const rotate = ([x, y], θ) => {
   return [
@@ -104,31 +20,31 @@ const rotate = ([x, y], θ) => {
   ];
 };
 
-const updateSquircle = ({
-  endLocation,
-  midpointLocation,
-}) => {
-  midpointLocation *= endLocation / 2;
-  const midpointVelocity = Math.sqrt(
-    Math.pow(midpointLocation, 2) +
-    Math.pow(endLocation + midpointLocation, 2)
-  ) / 4;
-  const endVelocity = midpointVelocity;
+const updateSquircle = () => {
+  const radius = radiusInput.valueAsNumber;
+  const smoothness = smoothnessInput.valueAsNumber;
+  const midpointInset = radius - Math.sin(Math.PI * 0.25) * radius;
+  const endInset = Math.min(1, midpointInset * 4 * smoothness);
+  const velocity = Math.sqrt(
+    Math.pow(midpointInset, 2) +
+    Math.pow(endInset + midpointInset, 2)
+  ) / 4 / smoothness;
+  console.log(endInset);
   const side = [
-    [-1, 0-endLocation-endVelocity],
-    [-1, -1+endLocation+endVelocity],
-    [-1, -1+endLocation],
+    [-1, 0-endInset-velocity],
+    [-1, -1+endInset+velocity],
+    [-1, -1+endInset],
   ];
   const cornerA = [
     [
-      -1 + midpointLocation + Math.cos(Math.PI * 1.25) * midpointVelocity,
-      -1 + midpointLocation + Math.sin(Math.PI * 1.25) * -midpointVelocity
+      -1 + midpointInset + Math.cos(Math.PI * 1.25) * velocity,
+      -1 + midpointInset + Math.sin(Math.PI * 1.25) * -velocity
     ],
-    [-1 + midpointLocation, -1 + midpointLocation],
+    [-1 + midpointInset, -1 + midpointInset],
   ];
   const cornerB = [
-    [-1 + endLocation - endVelocity, -1],
-    [-1 + endLocation, -1],
+    [-1 + endInset - velocity, -1],
+    [-1 + endInset, -1],
   ];
 
   const rotatePoints = (points, rotation) =>
@@ -145,44 +61,16 @@ const updateSquircle = ({
     S ${joinPoints(rotatePoints(cornerB, rotation))}
   `;
 
-  pathElA.setAttribute('d', `
-    M -1 ${4-endLocation},
+  roundrectEl.setAttribute('rx', radius);
+  roundrectEl.setAttribute('ry', radius);
+  pathEl.setAttribute('d', `
+    M -1 ${4-endInset},
     ${[0, -0.5, -1, -1.5].map(r => buildCorner(r)).join(',')},
   Z`);
-  // pathElB.setAttribute('d', `
-  //   M 0 1,
-  //   C 0 ${params.endVelocity}, ${params.endVelocity} 0, 1 0,
-  //   L 1 0,
-  //   L 1 1,
-  //   L 0 1,
-  //   Z`);
 }
 
-
-
-const settings = new Settings(document.getElementById('settings'), () => {
-  updateSquircle(settings);
-});
-
-settings.addSlider('endLocation', 0, 1, 0.01, 0.3);
-settings.addSlider('endVelocity', 0, 1, 0.01, 0.25);
-settings.addSlider('midpointLocation', 0, 1, 0.01, 0.2);
-settings.addSlider('midpointVelocity', 0, 1, 0.01, 0.25);
-settings.load();
-
-updateSquircle(settings);
+radiusInput.addEventListener('input', updateSquircle);
+smoothnessInput.addEventListener('input', updateSquircle);
+updateSquircle();
 
 </script>
-
-<!--<p><svg width=200 height=200 viewBox="0 0 1 1">
-  <rect fill=red rx=.3 ry=.3 x=0 y=0 width=1 height=1>
-  <animate attributeType="CSS" attributeName="opacity" values="1;0;1" dur="2s" repeatCount="indefinite" />
-  </rect>
-  <path id=squircle x=1 fill="rgba(0, 0, 0, 0.7)" d="
-    M0 .5,
-    C0 .07, .07 0, .5 0,
-    C.93 0, 1 .07, 1 .5,
-    C1 .93, .93 1, .5 1,
-    C.07 1, 0 .93, 0 .5,
-    Z"/>
-</svg></p>-->
