@@ -101,20 +101,18 @@ const updateSquircle = ({
     C 0 ${4-endLocation-endVelocity}
       0 ${endLocation+endVelocity}
       0 ${endLocation},
-    S ${
-        midpointLocation + Math.cos(Math.PI * 1.25) * midpointVelocity
-      } ${
-        midpointLocation + Math.sin(Math.PI * 1.25) * -midpointVelocity
-      },
+    S 
+        ${midpointLocation + Math.cos(Math.PI * 1.25) * midpointVelocity}
+        ${midpointLocation + Math.sin(Math.PI * 1.25) * -midpointVelocity}
       ${midpointLocation} ${midpointLocation},
     S ${endLocation-endVelocity} 0
       ${endLocation} 0,
     S ${4-endLocation-endVelocity} 0
       ${4-endLocation} 0,
-    S ${
-        4 - midpointLocation + Math.cos(Math.PI * 1.75) * midpointVelocity
-      } ,
-      4 ${endLocation},
+    S 
+        ${4 - midpointLocation + Math.cos(Math.PI * 0.75) * midpointVelocity}
+        ${midpointLocation + Math.sin(Math.PI * 0.75) * -midpointVelocity}
+      ${4-midpointLocation} ${midpointLocation},
     S 4 ${4-endLocation-endVelocity}
       4 ${4-endLocation},
     Z`);
