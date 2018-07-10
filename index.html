@@ -32,25 +32,6 @@ const updateShape = () => {
   const radius = radiusInput.valueAsNumber;
   const midpointInset = radius - Math.sin(Math.PI * 0.25) * radius;
   const endInset = Math.min(1, midpointInset * 4);
-  const velocity = Math.sqrt(
-    Math.pow(midpointInset, 2) +
-    Math.pow(endInset + midpointInset, 2)
-  ) / 4;
-  const side = [
-    [-1, -1+endInset],
-  ];
-  const cornerA = [
-    [-1, -1+endInset-velocity],
-    [
-      -1 + midpointInset + Math.cos(Math.PI * 1.25) * velocity,
-      -1 + midpointInset + Math.sin(Math.PI * 1.25) * -velocity
-    ],
-    [-1 + midpointInset, -1 + midpointInset],
-  ];
-  const cornerB = [
-    [-1 + endInset - velocity, -1],
-    [-1 + endInset, -1],
-  ];
 
   const rotatePoints = (points, rotation) =>
     points.map(p => rotate(p, Math.PI * rotation))
@@ -61,15 +42,19 @@ const updateShape = () => {
   ;
 
   const buildCorner = rotation => `
-    L ${joinPoints(rotatePoints(side, rotation))},
-    C ${joinPoints(rotatePoints(cornerA, rotation))},
-    S ${joinPoints(rotatePoints(cornerB, rotation))}
+    L ${joinPoints(rotatePoints([
+      [-1, -1+endInset]
+    ], rotation))},
+    Q ${joinPoints(rotatePoints([
+      [-1, -1],
+      [-1 + endInset, -1],
+    ], rotation))}
   `;
 
   roundrectEl.setAttribute('rx', radius);
   roundrectEl.setAttribute('ry', radius);
   pathEl.setAttribute('d', `
-    M -1 ${4-endInset},
+    M -1 ${1-endInset},
     ${[0, -0.5, -1, -1.5].map(r => buildCorner(r)).join(',')},
   Z`);
 }
