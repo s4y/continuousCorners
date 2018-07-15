@@ -2,6 +2,12 @@
 <meta name="viewport" content="width=device-width">
 <style>
 
+#svgEl {
+  overflow: visible;
+  margin: 0 auto;
+  display: block;
+}
+
 #svgEl.continuous > #roundrect {
   display: none;
 }
@@ -12,15 +18,19 @@
 
 </style>
 <p><label>Continuous: <input id=continuousInput type=checkbox checked></label></p>
+<p><label>Show curvature: <input id=showCombInput type=checkbox checked></label></p>
 <p><label>Radius:<br><input id=radiusInput type=range min=0 max=1 value=0.6 step=0.001></label></p>
-<p><svg id=svgEl width=200 height=200 viewBox="-1 -1 2 2">
+<p><svg id=svgEl width=300 height=300 viewBox="-1 -1 2 2">
   <rect id=roundrect rx=0.5 ry=0.5 x=-1 y=-1 width=2 height=2></rect>
   <path id=continuousrect x=1 />
+  <g id=comb></g>
+  <g id=points></g>
 </svg></p>
 <script>
-
 const roundrectEl = document.getElementById('roundrect');
 const pathEl = document.getElementById('continuousrect');
+const combEl = document.getElementById('comb');
+const pointsEl = document.getElementById('points');
 
 const rotate = ([x, y], θ) => {
   return [
@@ -29,10 +39,50 @@ const rotate = ([x, y], θ) => {
   ];
 };
 
+// The following two functions are based on this notebook:
+// https://beta.observablehq.com/@dhotson/drawing-better-looking-curves
+const bezierPosition = (t, ...points) => {
+  const f = (c0, c1, c2, c3) =>
+    c0 * (1-t)**3 +
+    c1 * 3 * (1-t)**2 * t +
+    c2 * 3 * (1-t) * t**2 +
+    c3 * t**3;
+  return [f(...points.map(p => p[0])), f(...points.map(p => p[1]))];
+};
+
+const bezierCurvature = (t, ...points) => {
+  const d1f = (c0, c1, c2, c3) =>
+    (c1 - c0) * 3 * (1-t)**2 +
+    (c2 - c1) * 6 * (1-t)*t +
+    (c3 - c2) * 3 * t**2;
+  const d2f = (c0, c1, c2, c3) =>
+    (c2 - c1 * 2 + c0) * 6 * (1-t) +
+    (c3 - c2 * 2 + c1) * 6 * t;
+  const d1 = [d1f(...points.map(p => p[0])), d1f(...points.map(p => p[1]))];
+  const d2 = [d2f(...points.map(p => p[0])), d2f(...points.map(p => p[1]))];
+  const curvature = (d1[0] * d2[1] - d1[1] * d2[0]) / (d1[0]**2 + d1[1]**2)**(3/2);
+  const normal = [-d1[1], d1[0]];
+  const mag = Math.sqrt(normal[0]**2 + normal[1]**2);
+  return [
+    curvature,
+    normal.map(c => c * 1/mag * curvature * -0.1)
+  ];
+};
+
 const updateShape = () => {
   const radius = radiusInput.valueAsNumber;
-  const midpointInset = radius - Math.sin(Math.PI * 0.25) * radius;
-  const endInset = Math.min(1, midpointInset * 4);
+  const tanLength = (4/3)*Math.tan(Math.PI/16) * radius;
+
+  const cornerInset = radius - Math.sin(Math.PI/4) * radius;
+  const endInset = Math.min(1, radius * 2);
+  const overshoot = radius * 2 - endInset;
+
+  const cornerLength =
+	  cornerInset / Math.sin(Math.PI/4) * (1 - overshoot) +
+	  tanLength * overshoot;
+  const sideLength =
+	  (endInset - endInset * Math.sin(Math.PI/4) + tanLength) * (1 - overshoot) +
+	  tanLength * overshoot;
 
   const rotatePoints = (points, rotation) =>
     points.map(p => rotate(p, Math.PI * rotation))
@@ -42,25 +92,75 @@ const updateShape = () => {
     points.map(coord => coord.join(' ')).join(' ')
   ;
 
-  const buildCorner = rotation => `
-    L ${joinPoints(rotatePoints([
-      [-1, -1+endInset]
-    ], rotation))},
-    Q ${joinPoints(rotatePoints([
-      [-1, -1],
-      [-1 + endInset, -1],
-    ], rotation))}
-  `;
+  const corner = [
+      [-1, -1 + endInset],
+      [-1, -1 + endInset - sideLength],
+      [-1 + cornerInset - cornerLength * Math.sin(Math.PI/4), -1 + cornerInset + cornerLength * Math.sin(Math.PI/4)],
+      [-1 + cornerInset, -1 + cornerInset]
+  ];
+
+  const corners = [0, -0.5, -1, -1.5].map(
+    rotation => [
+      corner.slice(0, 1),
+      corner.slice(1, 4),
+      corner.slice(0, 3).map(p => p.slice().reverse()).reverse(),
+    ].map(points => rotatePoints(points, rotation))
+  );
 
   roundrectEl.setAttribute('rx', radius);
   roundrectEl.setAttribute('ry', radius);
   pathEl.setAttribute('d', `
-    M -1 ${1-endInset},
-    ${[0, -0.5, -1, -1.5].map(r => buildCorner(r)).join(',')},
+    M -1 ${1-endInset}
+    ${corners.map(c => `
+      L ${joinPoints(c[0])}
+      C ${joinPoints(c[1])}
+      C ${joinPoints(c[2])}
+    `).join()}
   Z`);
+
+  points.innerHTML = '';
+  combEl.innerHTML = '';
+
+  if (!showCombInput.checked)
+    return;
+
+  for (const corner of corners) {
+    for (const point of [].concat(...corner)) {
+        const pointEl = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        pointEl.style = 'fill:rgb(0,0,255)';
+        pointEl.setAttribute('cx', point[0]);
+        pointEl.setAttribute('cy', point[1]);
+        pointEl.setAttribute('r', 0.02);
+        pointsEl.appendChild(pointEl);
+    }
+  }
+
+  if (endInset == 0)
+    return;
+
+  for (const corner of corners) {
+    for (const curve of [
+      corner[0].concat(corner[1]),
+      [corner[1][2]].concat(corner[2]),
+    ]) {
+      for (let t = 0; t <= 1; t += 0.01) {
+        const [c, n] = bezierCurvature(t, ...curve);
+        const p = bezierPosition(t, ...curve);
+
+        const whisker = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+        whisker.style = 'stroke:rgb(255,0,0);stroke-width:0.002';
+        whisker.setAttribute('x1', p[0]);
+        whisker.setAttribute('y1', p[1]);
+        whisker.setAttribute('x2', p[0]+n[0]);
+        whisker.setAttribute('y2', p[1]+n[1]);
+        combEl.appendChild(whisker);
+      }
+    }
+  }
 }
 
 radiusInput.addEventListener('input', updateShape);
+showCombInput.addEventListener('change', updateShape);
 updateShape();
 
 const updateIsContinuous = () => {
