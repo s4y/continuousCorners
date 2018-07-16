@@ -8,26 +8,16 @@
   display: block;
 }
 
-#svgEl.continuous > #roundrect {
-  display: none;
-}
-
-#svgEl:not(.continuous) > #continuousrect {
-  display: none;
-}
-
 </style>
 <p><label>Continuous: <input id=continuousInput type=checkbox checked></label></p>
-<p><label>Show curvature: <input id=showCombInput type=checkbox></label></p>
+<p><label>Show curvature: <input id=showCurvatureInput type=checkbox></label></p>
 <p><label>Radius:<br><input id=radiusInput type=range min=0 max=1 value=0.6 step=0.001></label></p>
 <p><svg id=svgEl width=300 height=300 viewBox="-1 -1 2 2">
-  <rect id=roundrect rx=0.5 ry=0.5 x=-1 y=-1 width=2 height=2></rect>
   <path id=continuousrect x=1 />
   <g id=comb></g>
   <g id=points></g>
 </svg></p>
 <script>
-const roundrectEl = document.getElementById('roundrect');
 const pathEl = document.getElementById('continuousrect');
 const combEl = document.getElementById('comb');
 const pointsEl = document.getElementById('points');
@@ -70,19 +60,23 @@ const bezierCurvature = (t, ...points) => {
 };
 
 const updateShape = () => {
+  const continuous = continuousInput.checked;
   const radius = radiusInput.valueAsNumber;
+  const effectiveRadius = radius * (continuous ? 2 : 1);
   const tanLength = (4/3)*Math.tan(Math.PI/16) * radius;
 
   const cornerInset = radius - Math.sin(Math.PI/4) * radius;
-  const endInset = Math.min(1, radius * 2);
-  const overshoot = radius * 2 - endInset;
+  const endInset = Math.min(1, effectiveRadius);
+  const overshoot = effectiveRadius - endInset;
 
-  const cornerLength =
-	  cornerInset / Math.sin(Math.PI/4) * (1 - overshoot) +
-	  tanLength * overshoot;
-  const sideLength =
+  const cornerLength = continuous ?
+	  (cornerInset / Math.sin(Math.PI/4) * (1 - overshoot) +
+	  tanLength * overshoot) :
+    tanLength;
+  const sideLength = continuous ?
 	  (endInset - endInset * Math.sin(Math.PI/4) + tanLength) * (1 - overshoot) +
-	  tanLength * overshoot;
+	  tanLength * overshoot :
+    tanLength;
 
   const rotatePoints = (points, rotation) =>
     points.map(p => rotate(p, Math.PI * rotation))
@@ -107,8 +101,6 @@ const updateShape = () => {
     ].map(points => rotatePoints(points, rotation))
   );
 
-  roundrectEl.setAttribute('rx', radius);
-  roundrectEl.setAttribute('ry', radius);
   pathEl.setAttribute('d', `
     M -1 ${1-endInset}
     ${corners.map(c => `
@@ -121,7 +113,7 @@ const updateShape = () => {
   points.innerHTML = '';
   combEl.innerHTML = '';
 
-  if (!showCombInput.checked)
+  if (!showCurvatureInput.checked)
     return;
 
   for (const corner of corners) {
@@ -148,7 +140,7 @@ const updateShape = () => {
         const p = bezierPosition(t, ...curve);
 
         const whisker = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-        whisker.style = 'stroke:rgb(255,0,0);stroke-width:0.002';
+        whisker.style = 'stroke:rgb(255,0,0);stroke-width:0.003';
         whisker.setAttribute('x1', p[0]);
         whisker.setAttribute('y1', p[1]);
         whisker.setAttribute('x2', p[0]+n[0]);
@@ -160,14 +152,8 @@ const updateShape = () => {
 }
 
 radiusInput.addEventListener('input', updateShape);
-showCombInput.addEventListener('change', updateShape);
+continuousInput.addEventListener('change', updateShape);
+showCurvatureInput.addEventListener('change', updateShape);
 updateShape();
-
-const updateIsContinuous = () => {
-  svgEl.classList[continuousInput.checked ? 'add' : 'remove']('continuous');
-};
-
-continuousInput.addEventListener('change', updateIsContinuous);
-updateIsContinuous();
 
 </script>
